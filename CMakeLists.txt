@@ -9,7 +9,7 @@ add_executable(${CMAKE_PROJECT_NAME} main.cpp)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE .)
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE int128.cc)
 
-target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
+target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_20)
 
 if (MSVC)
 	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /Zc:__cplusplus /utf-8)

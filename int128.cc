@@ -16,6 +16,7 @@
 
 #include <stddef.h>
 
+#include <bit>
 #include <cassert>
 #include <iomanip>
 #include <ostream>  // NOLINT(readability/streams)
@@ -23,11 +24,7 @@
 #include <string>
 #include <type_traits>
 
-#include "absl/base/optimization.h"
-#include "absl/numeric/bits.h"
-
 namespace absl {
-ABSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -37,14 +34,14 @@ namespace {
 // For example:
 //   Given: 5 (decimal) == 101 (binary)
 //   Returns: 2
-inline ABSL_ATTRIBUTE_ALWAYS_INLINE int Fls128(uint128 n) {
+inline int Fls128(uint128 n) {
   if (uint64_t hi = Uint128High64(n)) {
     ABSL_ASSUME(hi != 0);
-    return 127 - countl_zero(hi);
+    return 127 - std::countl_zero(hi);
   }
   const uint64_t low = Uint128Low64(n);
   ABSL_ASSUME(low != 0);
-  return 63 - countl_zero(low);
+  return 63 - std::countl_zero(low);
 }
 
 // Long division/modulo for uint128 implemented using the shift-subtract
@@ -108,27 +105,6 @@ uint128 MakeUint128FromFloat(T v) {
   return MakeUint128(0, static_cast<uint64_t>(v));
 }
 
-#if defined(__clang__) && (__clang_major__ < 9) && !defined(__SSE3__)
-// Workaround for clang bug: https://bugs.llvm.org/show_bug.cgi?id=38289
-// Casting from long double to uint64_t is miscompiled and drops bits.
-// It is more work, so only use when we need the workaround.
-uint128 MakeUint128FromFloat(long double v) {
-  // Go 50 bits at a time, that fits in a double
-  static_assert(std::numeric_limits<double>::digits >= 50, "");
-  static_assert(std::numeric_limits<long double>::digits <= 150, "");
-  // Undefined behavior if v is not finite or cannot fit into uint128.
-  assert(std::isfinite(v) && v > -1 && v < std::ldexp(1.0L, 128));
-
-  v = std::ldexp(v, -100);
-  uint64_t w0 = static_cast<uint64_t>(static_cast<double>(std::trunc(v)));
-  v = std::ldexp(v - static_cast<double>(w0), 50);
-  uint64_t w1 = static_cast<uint64_t>(static_cast<double>(std::trunc(v)));
-  v = std::ldexp(v - static_cast<double>(w1), 50);
-  uint64_t w2 = static_cast<uint64_t>(static_cast<double>(std::trunc(v)));
-  return (static_cast<uint128>(w0) << 100) | (static_cast<uint128>(w1) << 50) |
-         static_cast<uint128>(w2);
-}
-#endif  // __clang__ && (__clang_major__ < 9) && !__SSE3__
 }  // namespace
 
 uint128::uint128(float v) : uint128(MakeUint128FromFloat(v)) {}
@@ -340,5 +316,4 @@ std::ostream& operator<<(std::ostream& os, int128 v) {
   return os << rep;
 }
 
-ABSL_NAMESPACE_END
 }  // namespace absl
