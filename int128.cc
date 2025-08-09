@@ -30,23 +30,6 @@ namespace absl
 namespace
 {
 
-// Returns the 0-based position of the last set bit (i.e., most significant bit)
-// in the given uint128. The argument is not 0.
-//
-// For example:
-//   Given: 5 (decimal) == 101 (binary)
-//   Returns: 2
-inline int Fls128(uint128 n)
-{
-    if (uint64_t hi = Uint128High64(n)) {
-        ABSL_ASSUME(hi != 0);
-        return 127 - std::countl_zero(hi);
-    }
-    const uint64_t low = Uint128Low64(n);
-    ABSL_ASSUME(low != 0);
-    return 63 - std::countl_zero(low);
-}
-
 // Long division/modulo for uint128 implemented using the shift-subtract
 // division algorithm adapted from:
 // https://stackoverflow.com/questions/5386377/division-without-using
@@ -70,7 +53,7 @@ inline void DivModImpl(uint128 dividend, uint128 divisor, uint128 *quotient_ret,
     uint128 quotient = 0;
 
     // Left aligns the MSB of the denominator and the dividend.
-    const int shift = Fls128(dividend) - Fls128(denominator);
+    const int shift = dividend.fls() - denominator.fls();
     denominator <<= shift;
 
     // Uses shift-subtract algorithm to divide dividend by denominator. The

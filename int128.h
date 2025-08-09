@@ -23,6 +23,7 @@
 // This header file defines 128-bit integer types, `uint128` and `int128`.
 //
 
+#include <bit>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -365,6 +366,21 @@ class
     uint128 &operator^=(uint128 other);
     uint128 &operator++();
     uint128 &operator--();
+
+    // Find Last bit Set
+    // Returns the 0-based position of the last set bit (i.e., most significant bit)
+    // in the given uint128. The argument is not 0.
+    //
+    // For example:
+    //   Given: 5 (decimal) == 101 (binary)
+    //   Returns: 2
+    constexpr int fls() const {
+        if (hi_) {
+            return 127 - std::countl_zero(hi_);
+        }
+        ABSL_ASSUME(lo_ != 0);
+        return 63 - std::countl_zero(lo_);
+    }
 
     // Uint128Low64()
     //
