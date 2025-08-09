@@ -147,37 +147,6 @@
 #endif  // defined(__CUDACC__)
 #endif  // ABSL_HAVE_INTRINSIC_INT128
 
-// ABSL_IS_LITTLE_ENDIAN
-// ABSL_IS_BIG_ENDIAN
-//
-// Checks the endianness of the platform.
-//
-// Prefer using `std::endian` in C++20, or `absl::endian` from
-// absl/numeric/bits.h prior to C++20.
-//
-// Notes: uses the built in endian macros provided by GCC (since 4.6) and
-// Clang (since 3.2); see
-// https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html.
-// Otherwise, if _WIN32, assume little endian. Otherwise, bail with an error.
-#if defined(ABSL_IS_BIG_ENDIAN)
-#error "ABSL_IS_BIG_ENDIAN cannot be directly set."
-#endif
-#if defined(ABSL_IS_LITTLE_ENDIAN)
-#error "ABSL_IS_LITTLE_ENDIAN cannot be directly set."
-#endif
-
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
-     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#define ABSL_IS_LITTLE_ENDIAN 1
-#elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
-    __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define ABSL_IS_BIG_ENDIAN 1
-#elif defined(_WIN32)
-#define ABSL_IS_LITTLE_ENDIAN 1
-#else
-#error "absl endian detection needs to be set up for your compiler"
-#endif
-
 // -----------------------------------------------------------------------------
 // File: optimization.h
 // -----------------------------------------------------------------------------
@@ -443,19 +412,8 @@ class
 
   std::string ToString() const;
 
-  // TODO(strel) Update implementation to use __int128 once all users of
-  // uint128 are fixed to not depend on alignof(uint128) == 8. Also add
-  // alignas(16) to class definition to keep alignment consistent across
-  // platforms.
-#if defined(ABSL_IS_LITTLE_ENDIAN)
   uint64_t lo_;
   uint64_t hi_;
-#elif defined(ABSL_IS_BIG_ENDIAN)
-  uint64_t hi_;
-  uint64_t lo_;
-#else  // byte order
-#error "Unsupported byte order: must be little-endian or big-endian."
-#endif  // byte order
 };
 
 // allow uint128 to be logged
@@ -688,15 +646,8 @@ class int128 {
 #if defined(ABSL_HAVE_INTRINSIC_INT128)
   __int128 v_;
 #else  // ABSL_HAVE_INTRINSIC_INT128
-#if defined(ABSL_IS_LITTLE_ENDIAN)
   uint64_t lo_;
   int64_t hi_;
-#elif defined(ABSL_IS_BIG_ENDIAN)
-  int64_t hi_;
-  uint64_t lo_;
-#else  // byte order
-#error "Unsupported byte order: must be little-endian or big-endian."
-#endif  // byte order
 #endif  // ABSL_HAVE_INTRINSIC_INT128
 };
 
@@ -855,8 +806,6 @@ constexpr uint64_t Uint128High64(uint128 v) { return v.hi_; }
 
 // Constructors from integer types.
 
-#if defined(ABSL_IS_LITTLE_ENDIAN)
-
 constexpr uint128::uint128(uint64_t high, uint64_t low) : lo_{low}, hi_{high} {}
 
 constexpr uint128::uint128(int v)
@@ -886,42 +835,6 @@ constexpr uint128::uint128(unsigned __int128 v)
 
 constexpr uint128::uint128(int128 v)
     : lo_{Int128Low64(v)}, hi_{static_cast<uint64_t>(Int128High64(v))} {}
-
-#elif defined(ABSL_IS_BIG_ENDIAN)
-
-constexpr uint128::uint128(uint64_t high, uint64_t low) : hi_{high}, lo_{low} {}
-
-constexpr uint128::uint128(int v)
-    : hi_{v < 0 ? (std::numeric_limits<uint64_t>::max)() : 0},
-      lo_{static_cast<uint64_t>(v)} {}
-constexpr uint128::uint128(long v)  // NOLINT(runtime/int)
-    : hi_{v < 0 ? (std::numeric_limits<uint64_t>::max)() : 0},
-      lo_{static_cast<uint64_t>(v)} {}
-constexpr uint128::uint128(long long v)  // NOLINT(runtime/int)
-    : hi_{v < 0 ? (std::numeric_limits<uint64_t>::max)() : 0},
-      lo_{static_cast<uint64_t>(v)} {}
-
-constexpr uint128::uint128(unsigned int v) : hi_{0}, lo_{v} {}
-// NOLINTNEXTLINE(runtime/int)
-constexpr uint128::uint128(unsigned long v) : hi_{0}, lo_{v} {}
-// NOLINTNEXTLINE(runtime/int)
-constexpr uint128::uint128(unsigned long long v) : hi_{0}, lo_{v} {}
-
-#ifdef ABSL_HAVE_INTRINSIC_INT128
-constexpr uint128::uint128(__int128 v)
-    : hi_{static_cast<uint64_t>(static_cast<unsigned __int128>(v) >> 64)},
-      lo_{static_cast<uint64_t>(v & ~uint64_t{0})} {}
-constexpr uint128::uint128(unsigned __int128 v)
-    : hi_{static_cast<uint64_t>(v >> 64)},
-      lo_{static_cast<uint64_t>(v & ~uint64_t{0})} {}
-#endif  // ABSL_HAVE_INTRINSIC_INT128
-
-constexpr uint128::uint128(int128 v)
-    : hi_{static_cast<uint64_t>(Int128High64(v))}, lo_{Int128Low64(v)} {}
-
-#else  // byte order
-#error "Unsupported byte order: must be little-endian or big-endian."
-#endif  // byte order
 
 // Conversion operators to integer types.
 
@@ -1697,8 +1610,6 @@ constexpr uint64_t Int128Low64(int128 v) { return v.lo_; }
 
 constexpr int64_t Int128High64(int128 v) { return v.hi_; }
 
-#if defined(ABSL_IS_LITTLE_ENDIAN)
-
 constexpr int128::int128(int64_t high, uint64_t low) : lo_(low), hi_(high) {}
 
 constexpr int128::int128(int v)
@@ -1716,30 +1627,6 @@ constexpr int128::int128(unsigned long long v) : lo_{v}, hi_{0} {}
 
 constexpr int128::int128(uint128 v)
     : lo_{Uint128Low64(v)}, hi_{static_cast<int64_t>(Uint128High64(v))} {}
-
-#elif defined(ABSL_IS_BIG_ENDIAN)
-
-constexpr int128::int128(int64_t high, uint64_t low) : hi_{high}, lo_{low} {}
-
-constexpr int128::int128(int v)
-    : hi_{v < 0 ? ~int64_t{0} : 0}, lo_{static_cast<uint64_t>(v)} {}
-constexpr int128::int128(long v)  // NOLINT(runtime/int)
-    : hi_{v < 0 ? ~int64_t{0} : 0}, lo_{static_cast<uint64_t>(v)} {}
-constexpr int128::int128(long long v)  // NOLINT(runtime/int)
-    : hi_{v < 0 ? ~int64_t{0} : 0}, lo_{static_cast<uint64_t>(v)} {}
-
-constexpr int128::int128(unsigned int v) : hi_{0}, lo_{v} {}
-// NOLINTNEXTLINE(runtime/int)
-constexpr int128::int128(unsigned long v) : hi_{0}, lo_{v} {}
-// NOLINTNEXTLINE(runtime/int)
-constexpr int128::int128(unsigned long long v) : hi_{0}, lo_{v} {}
-
-constexpr int128::int128(uint128 v)
-    : hi_{static_cast<int64_t>(Uint128High64(v))}, lo_{Uint128Low64(v)} {}
-
-#else  // byte order
-#error "Unsupported byte order: must be little-endian or big-endian."
-#endif  // byte order
 
 constexpr int128::operator bool() const { return lo_ || hi_; }
 
