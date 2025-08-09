@@ -148,16 +148,16 @@ std::string Uint128ToFormattedString(uint128 v, std::ios_base::fmtflags flags)
     DivModImpl(high, div, &high, &low);
     uint128 mid;
     DivModImpl(high, div, &high, &mid);
-    if (Uint128Low64(high) != 0) {
-        os << Uint128Low64(high);
+    if (high.low64() != 0) {
+        os << high.low64();
         os << std::noshowbase << std::setfill('0') << std::setw(div_base_log);
-        os << Uint128Low64(mid);
+        os << mid.low64();
         os << std::setw(div_base_log);
-    } else if (Uint128Low64(mid) != 0) {
-        os << Uint128Low64(mid);
+    } else if (mid.low64() != 0) {
+        os << mid.low64();
         os << std::noshowbase << std::setfill('0') << std::setw(div_base_log);
     }
-    os << Uint128Low64(low);
+    os << low.low64();
     return os.str();
 }
 
@@ -215,7 +215,7 @@ template <typename T> int128 MakeInt128FromFloat(T v)
     // difference between the high and low 64 bits when interpreted as two's
     // complement overwhelms the precision of the mantissa.
     uint128 result = v < 0 ? -MakeUint128FromFloat(-v) : MakeUint128FromFloat(v);
-    return MakeInt128(int128_internal::BitCastToSigned(Uint128High64(result)), Uint128Low64(result));
+    return MakeInt128(int128_internal::BitCastToSigned(result.high64()), result.low64());
 }
 
 } // namespace
@@ -233,7 +233,7 @@ int128 operator/(int128 lhs, int128 rhs)
     DivModImpl(UnsignedAbsoluteValue(lhs), UnsignedAbsoluteValue(rhs), &quotient, &remainder);
     if ((Int128High64(lhs) < 0) != (Int128High64(rhs) < 0))
         quotient = -quotient;
-    return MakeInt128(int128_internal::BitCastToSigned(Uint128High64(quotient)), Uint128Low64(quotient));
+    return MakeInt128(int128_internal::BitCastToSigned(quotient.high64()), quotient.low64());
 }
 
 int128 operator%(int128 lhs, int128 rhs)
@@ -245,7 +245,7 @@ int128 operator%(int128 lhs, int128 rhs)
     DivModImpl(UnsignedAbsoluteValue(lhs), UnsignedAbsoluteValue(rhs), &quotient, &remainder);
     if (Int128High64(lhs) < 0)
         remainder = -remainder;
-    return MakeInt128(int128_internal::BitCastToSigned(Uint128High64(remainder)), Uint128Low64(remainder));
+    return MakeInt128(int128_internal::BitCastToSigned(remainder.high64()), remainder.low64());
 }
 #endif // ABSL_HAVE_INTRINSIC_INT128
 
